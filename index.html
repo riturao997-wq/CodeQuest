@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CodeQuest: The OOP Dungeon</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #121216; color: #e0e0e0; text-align: center; padding: 25px; }
+        .container { background: #1e1e24; padding: 25px; border-radius: 12px; display: inline-block; width: 620px; border: 2px solid #333; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+        h1 { color: #bb86fc; font-size: 22px; }
+        .stats { display: flex; justify-content: space-around; background: #2a2a35; padding: 10px; border-radius: 6px; margin: 15px 0; font-size: 14px; }
+        .house-box { background: #252530; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #03dac6; display: flex; justify-content: space-between; align-items: center; text-align: left; }
+        .house-visual { font-size: 36px; background: #1e1e24; padding: 12px; border-radius: 8px; border: 1px dashed #03dac6; text-align: center; min-width: 70px; }
+        .editor-box { background: #2a2a35; padding: 15px; border-radius: 6px; margin-top: 15px; text-align: left; }
+        textarea { width: 95%; height: 90px; background: #121216; color: #03dac6; border: 1px solid #444; border-radius: 4px; padding: 10px; font-family: monospace; font-size: 14px; resize: none; }
+        button { padding: 10px 18px; margin-top: 10px; font-weight: bold; background-color: #bb86fc; color: #121216; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #9a67ea; }
+        .btn-danger { background-color: #cf6679; color: #fff; }
+        input { padding: 8px; margin: 5px; width: 80%; background: #121216; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        #status { margin-top: 12px; font-weight: bold; color: #ffeb3b; font-size: 14px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ CodeQuest: The OOP Dungeon ⚔️</h1>
+
+        <!-- Auth Section -->
+        <div id="auth-section">
+            <div style="background: #2a2a35; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h3>Player Login / Register</h3>
+                <input type="text" id="username" placeholder="Enter Username"><br>
+                <input type="password" id="password" placeholder="Enter Password"><br>
+                <button onclick="login()">Login</button>
+                <button onclick="register()">Register New Account</button>
+            </div>
+        </div>
+
+        <!-- Game Dashboard Section -->
+        <div id="game-section" class="hidden">
+            <div class="stats" id="stats"></div>
+
+            <div class="house-box">
+                <div class="house-info">
+                    <b>🏠 House Progress (<span id="count">0</span>/50):</b>
+                    <div id="house-status" style="margin-top: 6px; color: #03dac6; font-size: 13px;"></div>
+                </div>
+                <div class="house-visual" id="house-icon">🪵</div>
+            </div>
+
+            <div class="editor-box">
+                <p><b>❓ Coding Challenge:</b> <span id="q-prompt"></span></p>
+                <p style="font-size: 12px; color: #888;">Hint / Keywords: <span id="q-hint"></span></p>
+                <textarea id="user-code" placeholder="// Write your Java code here..."></textarea>
+                <br>
+                <button onclick="submitCode()">🚀 Run & Submit Code</button>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <button class="btn-danger" onclick="resetProgress()">🔄 Reset Game Progress</button>
+                <button style="background-color: #03dac6;" onclick="logout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8080";
+
+        function checkGameState() {
+            fetch(`${API_URL}/game-state`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.logged) {
+                        document.getElementById('auth-section').classList.add('hidden');
+                        document.getElementById('game-section').classList.remove('hidden');
+                        
+                        document.getElementById('stats').innerHTML = `
+                            <div>Hero: <b>${data.name}</b></div>
+                            <div>✨ XP: <b>${data.xp}</b></div>
+                            <div>🛡️ Level: <b>${data.level}</b></div>
+                        `;
+                        document.getElementById('count').innerText = data.solvedCount;
+                        document.getElementById('house-status').innerText = data.house;
+                        document.getElementById('q-prompt').innerText = data.question;
+                        document.getElementById('q-hint').innerText = data.hint;
+
+                        updateHouseVisual(data.solvedCount);
+                    } else {
+                        document.getElementById('auth-section').classList.remove('hidden');
+                        document.getElementById('game-section').classList.add('hidden');
+                    }
+                });
+        }
+
+        function register() {
+            let u = document.getElementById('username').value;
+            let p = document.getElementById('password').value;
+            fetch(`${API_URL}/register`, {
+                method: 'POST',
+                body: `username=${u}&password=${p}`
+            }).then(res => res.json()).then(data => {
+                document.getElementById('status').innerText = data.message;
+                if(data.success) checkGameState();
+            });
+        }
+
+        function login() {
+            let u = document.getElementById('username').value;
+            let p = document.getElementById('password').value;
+            fetch(`${API_URL}/login`, {
+                method: 'POST',
+                body: `username=${u}&password=${p}`
+            }).then(res => res.json()).then(data => {
+                document.getElementById('status').innerText = data.message;
+                if(data.success) checkGameState();
+            });
+        }
+
+        function logout() {
+            fetch(`${API_URL}/logout`).then(res => res.json()).then(data => {
+                document.getElementById('status').innerText = data.message;
+                checkGameState();
+            });
+        }
+
+        function resetProgress() {
+            if(confirm("Are you sure you want to reset your game progress?")) {
+                fetch(`${API_URL}/reset`, { method: 'POST' })
+                .then(res => res.json()).then(data => {
+                    document.getElementById('status').innerText = data.message;
+                    checkGameState();
+                });
+            }
+        }
+
+        function updateHouseVisual(count) {
+            let iconElement = document.getElementById('house-icon');
+            if (count <= 10) iconElement.innerText = "🪵";
+            else if (count <= 25) iconElement.innerText = "🧱";
+            else if (count <= 40) iconElement.innerText = "🚪";
+            else if (count < 50) iconElement.innerText = "🏠";
+            else iconElement.innerText = "🏰";
+        }
+
+        function submitCode() {
+            let code = document.getElementById('user-code').value;
+            fetch(`${API_URL}/submit-code`, {
+                method: 'POST',
+                body: code
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('status').innerText = data.message;
+                if(data.success) {
+                    document.getElementById('user-code').value = "";
+                    checkGameState();
+                }
+            });
+        }
+
+        checkGameState();
+    </script>
+</body>
+</html>
